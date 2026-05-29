@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopicContinuityDecider — Decision Matrix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0D0F14;
+  --surface:   #13161D;
+  --surface2:  #1A1E28;
+  --border:    #252A36;
+  --border2:   #2E3444;
+  --text:      #E8EAF0;
+  --muted:     #6B7280;
+  --dim:       #3D4455;
+
+  --teal:      #00D4AA;
+  --teal-bg:   rgba(0,212,170,.10);
+  --amber:     #F5A623;
+  --amber-bg:  rgba(245,166,35,.10);
+  --coral:     #FF6B6B;
+  --coral-bg:  rgba(255,107,107,.10);
+  --purple:    #A78BFA;
+  --purple-bg: rgba(167,139,250,.10);
+  --pink:      #F472B6;
+  --pink-bg:   rgba(244,114,182,.10);
+  --red:       #F87171;
+  --red-bg:    rgba(248,113,113,.10);
+  --blue:      #60A5FA;
+  --blue-bg:   rgba(96,165,250,.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  padding: 48px 40px 32px;
+  border-bottom: 0.5px solid var(--border);
+  background: linear-gradient(180deg, #13161D 0%, #0D0F14 100%);
+}
+.header-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--teal);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+  margin-bottom: 8px;
+}
+.header h1 span { color: var(--teal); }
+.header p {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 640px;
+  line-height: 1.7;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 20px 40px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Filters ── */
+.filters {
+  padding: 20px 40px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.filters label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-right: 2px;
+}
+select, .search-input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  background: var(--surface2);
+  border: 0.5px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  height: 30px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+}
+select:hover, .search-input:hover,
+select:focus, .search-input:focus { border-color: var(--teal); }
+.search-input { width: 180px; }
+.reset-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 5px 14px;
+  background: transparent;
+  border: 0.5px solid var(--border2);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  height: 30px;
+  transition: all .15s;
+}
+.reset-btn:hover { border-color: var(--coral); color: var(--coral); }
+.counter {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* ── Cards ── */
+.cards {
+  padding: 24px 40px 48px;
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .2s, transform .15s;
+}
+.card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.card.hidden { display: none; }
+
+.card-header {
+  padding: 14px 18px 12px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.card-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  min-width: 24px;
+}
+
+.card-body { padding: 14px 18px; }
+
+.card-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.6;
+  border-left: 2px solid var(--border2);
+  padding-left: 10px;
+}
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 6px;
+}
+
+.turn {
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  font-size: 12px;
+  line-height: 1.6;
+  border-radius: 6px;
+  border-left: 2px solid transparent;
+}
+.turn-user { background: var(--surface2); border-color: var(--purple); }
+.turn-bot  { background: var(--surface2); border-color: var(--teal); }
+.turn-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 3px;
+}
+.turn-user .turn-role { color: var(--purple); }
+.turn-bot  .turn-role { color: var(--teal); }
+.turn-text { color: var(--text); }
+
+.rw-box {
+  margin-top: 12px;
+  background: rgba(245,166,35,.06);
+  border: 0.5px solid rgba(245,166,35,.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.rw-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 8px;
+}
+.rw-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(245,166,35,.6);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 3px;
+  margin-top: 6px;
+}
+.rw-before { color: var(--muted); font-size: 12px; text-decoration: line-through; }
+.rw-after  { color: var(--amber); font-size: 12px; font-weight: 500; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  border: 0.5px solid transparent;
+}
+.b-teal   { background: var(--teal-bg);   color: var(--teal);   border-color: rgba(0,212,170,.2); }
+.b-amber  { background: var(--amber-bg);  color: var(--amber);  border-color: rgba(245,166,35,.2); }
+.b-coral  { background: var(--coral-bg);  color: var(--coral);  border-color: rgba(255,107,107,.2); }
+.b-purple { background: var(--purple-bg); color: var(--purple); border-color: rgba(167,139,250,.2); }
+.b-pink   { background: var(--pink-bg);   color: var(--pink);   border-color: rgba(244,114,182,.2); }
+.b-red    { background: var(--red-bg);    color: var(--red);    border-color: rgba(248,113,113,.2); }
+.b-gray   { background: rgba(107,114,128,.1); color: var(--muted); border-color: rgba(107,114,128,.2); }
+.b-blue   { background: var(--blue-bg);   color: var(--blue);   border-color: rgba(96,165,250,.2); }
+
+/* ── Empty state ── */
+.empty {
+  padding: 48px;
+  text-align: center;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  display: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .header { padding: 32px 20px 24px; }
+  .header h1 { font-size: 22px; }
+  .filters { padding: 14px 20px; }
+  .cards { padding: 16px 20px 40px; }
+  .legend { padding: 14px 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">Banking RAG · Session Architecture</div>
+  <h1>TopicContinuityDecider<br><span>Decision Matrix</span></h1>
+  <p>All 30 signal combinations that determine how much conversation history is attached to each LLM call. Each card shows a real banking conversation example with prior context, current query, and query rewrite where applicable.</p>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="badge b-teal">FULL</span> Full history within budget</div>
+  <div class="legend-item"><span class="badge b-amber">PARTIAL</span> Last 3 turns only</div>
+  <div class="legend-item"><span class="badge b-coral">NO_HISTORY</span> Fresh context</div>
+  <div class="legend-item"><span class="badge b-purple">TOPIC_SEGMENT</span> Prior Redis segment</div>
+  <div class="legend-item"><span class="badge b-pink">anaphoric</span> Pronoun / reference detected</div>
+  <div class="legend-item"><span class="badge b-blue">callback</span> Explicit prior-topic reference</div>
+  <div class="legend-item"><span class="badge b-amber">rewrite</span> Query rewritten for entity carry-forward</div>
+  <div class="legend-item"><span class="badge b-red">budget trimmed</span> Oldest turns dropped</div>
+</div>
+
+<div class="filters">
+  <label>Filter</label>
+  <select id="f-ir">
+    <option value="">Intent resolved</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
+  <select id="f-sim">
+    <option value="">Similarity</option>
+    <option value="high">High &gt;0.85</option>
+    <option value="med">Medium 0.55–0.85</option>
+    <option value="low">Low &lt;0.55</option>
+    <option value="na">N/A</option>
+  </select>
+  <select id="f-ana">
+    <option value="">Anaphoric</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
+  <select id="f-cb">
+    <option value="">Callback</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
+  <select id="f-bud">
+    <option value="">Budget</option>
+    <option value="fits">Fits</option>
+    <option value="over">Over</option>
+  </select>
+  <select id="f-mode">
+    <option value="">Mode</option>
+    <option value="FULL">FULL</option>
+    <option value="PARTIAL">PARTIAL</option>
+    <option value="NO_HISTORY">NO_HISTORY</option>
+    <option value="TOPIC_SEGMENT">TOPIC_SEGMENT</option>
+  </select>
+  <input class="search-input" id="f-search" placeholder="Search conversations...">
+  <button class="reset-btn" id="reset-btn">Reset</button>
+  <span class="counter" id="counter">Showing 30 of 30</span>
+</div>
+
+<div class="cards" id="cards"></div>
+<div class="empty" id="empty">No combinations match the selected filters.</div>
+
+<script>
+var data = [
+  {ir:"yes",im:"yes",sim:"na",ana:"no",cb:"no",bud:"fits",mode:"FULL",rw:false,
+   prev:[["user","What is the interest rate on home loans?"],["bot","Our home loan rates start at 8.5% p.a. for a 20-year tenure with a minimum credit score of 750."]],
+   curr:"Can I apply online or do I need to visit a branch?",
+   note:"Same intent (loan_inquiry), no ambiguity. Full clean history attached. This is the ideal happy-path case.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"yes",sim:"na",ana:"yes",cb:"no",bud:"fits",mode:"FULL",rw:true,
+   prev:[["user","What documents are required for a personal loan?"],["bot","You need PAN card, last 3 months salary slips, and 6 months bank statement."]],
+   curr:"Is that the same for a home loan too?",
+   note:"Same intent but anaphoric 'that'. Full history kept so LLM can resolve the reference, plus query rewritten to be self-contained.",
+   rwB:"Is that the same for a home loan too?",
+   rwA:"Are the document requirements (PAN card, salary slips, bank statement) the same for a home loan as for a personal loan?"},
+
+  {ir:"yes",im:"yes",sim:"na",ana:"no",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:false,
+   prev:[["user","What is the EMI for a 50L home loan over 20 years?"],["bot","At 8.5% p.a., your EMI would be approximately 43,391 per month."]],
+   curr:"Going back to the loan discussion — what if I increase tenure to 25 years?",
+   note:"Callback phrase overrides the matching intent signal. User is explicitly pointing at a named prior segment — fetch that Redis topic segment instead of linear history.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"yes",sim:"na",ana:"yes",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:true,
+   prev:[["user","Explain the prepayment penalty on home loans."],["bot","No prepayment penalty for floating rate loans. Fixed rate loans carry a 2% charge on the prepaid amount."]],
+   curr:"Going back to that — does it apply to mine?",
+   note:"Callback + anaphoric combination. Fetch prior topic segment and rewrite query injecting account entity so LLM gets full context without ambiguity.",
+   rwB:"Going back to that — does it apply to mine?",
+   rwA:"Going back to the prepayment penalty discussion — does the 2% fixed-rate prepayment charge apply to account ACC-8821?"},
+
+  {ir:"yes",im:"yes",sim:"na",ana:"no",cb:"no",bud:"over",mode:"FULL",rw:false,
+   prev:[["user","[14 prior loan_inquiry turns — session has grown to 3200 tokens]"],["bot","[Oldest turns will be trimmed to fit the token budget]"]],
+   curr:"What is the maximum loan amount I can get?",
+   note:"Same intent, clean query, but history exceeds budget. Oldest turns dropped first. Mode stays FULL — the topic is unambiguously continuous.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"yes",sim:"na",ana:"yes",cb:"no",bud:"over",mode:"FULL",rw:true,
+   prev:[["user","[12 prior turns about home loan eligibility — 2800 tokens]"],["bot","[Account ACC-9021 mentioned 8 turns ago — may get trimmed]"]],
+   curr:"Will it affect my eligibility?",
+   note:"Budget exceeded AND anaphoric reference. Trim oldest turns so the entity mention might be cut — rewrite is mandatory to preserve the reference even after trimming.",
+   rwB:"Will it affect my eligibility?",
+   rwA:"Will the existing personal loan on account ACC-9021 affect my home loan eligibility?"},
+
+  {ir:"yes",im:"no",sim:"high",ana:"no",cb:"no",bud:"fits",mode:"FULL",rw:false,
+   prev:[["user","What is the minimum balance for a savings account?"],["bot","Minimum balance is 10,000 for metro branches and 5,000 for rural branches."]],
+   curr:"What about zero balance accounts?",
+   note:"Router labels this general_faq instead of account_balance, but embedding similarity is >0.85 — this is sub-intent drift, not a real topic change. Full history sent.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"high",ana:"yes",cb:"no",bud:"fits",mode:"FULL",rw:true,
+   prev:[["user","What are the annual charges for a savings account?"],["bot","Annual maintenance is 750. SMS alerts are 15/month. NEFT is free for online transactions."]],
+   curr:"Are they waived if I maintain a higher balance?",
+   note:"High similarity despite label drift (account_balance → general_faq), plus anaphoric 'they'. Same effective topic — full history + rewrite to resolve the pronoun.",
+   rwB:"Are they waived if I maintain a higher balance?",
+   rwA:"Are the savings account charges (AMC 750 and SMS alerts at 15/month) waived if I maintain a higher minimum balance?"},
+
+  {ir:"yes",im:"no",sim:"high",ana:"no",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:false,
+   prev:[["user","What is the NEFT transfer limit per day?"],["bot","Daily NEFT limit is 10 lakh for retail customers and 50 lakh for premium accounts."]],
+   curr:"Going back to the transfer limit topic — does RTGS have the same cap?",
+   note:"High similarity but explicit callback phrase. Callback always wins — user is deliberately referencing a named prior segment regardless of similarity score.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"high",ana:"yes",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:true,
+   prev:[["user","What documents are needed to open a current account?"],["bot","You need GST certificate, business PAN, and last 6 months ITR."]],
+   curr:"Going back to that — do I need those for a savings account too?",
+   note:"High similarity + callback + anaphoric — all three signals firing. Fetch the referenced topic segment and rewrite to explicitly name the document list.",
+   rwB:"Going back to that — do I need those for a savings account too?",
+   rwA:"Going back to the current account document discussion — are GST certificate, business PAN, and 6-month ITR also required to open a savings account?"},
+
+  {ir:"yes",im:"no",sim:"high",ana:"no",cb:"no",bud:"over",mode:"FULL",rw:false,
+   prev:[["user","[10 turns about account features — 2600 tokens, label drifted account_balance to general_faq]"],["bot","[Over budget — oldest turns will be trimmed]"]],
+   curr:"What is the interest rate on a fixed deposit?",
+   note:"High similarity despite label change, budget exceeded. Topic is still continuous — trim oldest turns but maintain FULL mode.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"high",ana:"yes",cb:"no",bud:"over",mode:"FULL",rw:true,
+   prev:[["user","[11 turns about FD rates — 2700 tokens, over budget]"],["bot","[FD-REF-5521 mentioned 6 turns ago — will be trimmed]"]],
+   curr:"Can I break it early?",
+   note:"High similarity, anaphoric 'it', and over budget. After trimming the FD reference may be lost — rewrite injects the entity explicitly.",
+   rwB:"Can I break it early?",
+   rwA:"Can I break fixed deposit FD-REF-5521 before its maturity date without a penalty?"},
+
+  {ir:"yes",im:"no",sim:"med",ana:"no",cb:"no",bud:"fits",mode:"PARTIAL",rw:false,
+   prev:[["user","How do I block my debit card?"],["bot","Block it via the mobile app under Cards > Block Card, or call our 24/7 helpline at 1800-XXX-XXXX."]],
+   curr:"What is the turnaround time for a replacement card delivery?",
+   note:"Intent shifted from card_dispute to card_services, medium similarity (0.55–0.85). Topic is drifting but related — send last 3 turns as a continuity anchor.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"med",ana:"yes",cb:"no",bud:"fits",mode:"PARTIAL",rw:true,
+   prev:[["user","I need to raise a dispute for a charge on my credit card."],["bot","Please share the transaction date and amount. All disputes must be raised within 60 days of the transaction."]],
+   curr:"How long does that process take?",
+   note:"Drifting intent (card_dispute → card_inquiry) + anaphoric 'that process'. Partial history kept for context and query rewritten to name the process explicitly.",
+   rwB:"How long does that process take?",
+   rwA:"How long does the credit card dispute resolution process typically take from submission to final decision?"},
+
+  {ir:"yes",im:"no",sim:"med",ana:"no",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:false,
+   prev:[["user","What is the minimum amount for a wire transfer?"],["bot","RTGS minimum is 2 lakh. NEFT has no minimum and is free for online transactions."]],
+   curr:"Earlier you mentioned transfer limits — what about UPI?",
+   note:"Medium similarity + callback phrase. Callback overrides the PARTIAL decision — user is explicitly referencing the transfer limits topic. Fetch that segment.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"med",ana:"yes",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:true,
+   prev:[["user","Can I set up recurring transfers from my account?"],["bot","Yes, you can configure standing instructions for fixed amounts on a weekly or monthly basis."]],
+   curr:"Earlier you mentioned that — can I change it after setting it up?",
+   note:"Medium similarity + callback + anaphoric. Fetch the standing instructions segment and rewrite to make the modification question fully explicit.",
+   rwB:"Earlier you mentioned that — can I change it after setting it up?",
+   rwA:"Earlier you mentioned standing instructions for recurring transfers — can I modify the transfer amount or frequency after a standing instruction has already been set up?"},
+
+  {ir:"yes",im:"no",sim:"med",ana:"no",cb:"no",bud:"over",mode:"PARTIAL",rw:false,
+   prev:[["user","[9 turns drifting from statement_request to general_faq — 2400 tokens]"],["bot","[Over budget]"]],
+   curr:"How do I download my account statement for the last 3 months?",
+   note:"Drifting topic, over budget. PARTIAL mode selects last 3 turns which almost always fit within budget — a natural self-regulating combination.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"med",ana:"yes",cb:"no",bud:"over",mode:"PARTIAL",rw:true,
+   prev:[["user","[8 turns about statement and charges — over budget]"],["bot","[Statement period January to March discussed in earlier turns]"]],
+   curr:"Can I get it for that period in PDF?",
+   note:"Drifting topic, anaphoric 'that period', over budget. Last 3 turns trimmed to fit budget and query rewritten to name the period explicitly.",
+   rwB:"Can I get it for that period in PDF?",
+   rwA:"Can I download the account statement for January to March as a PDF file?"},
+
+  {ir:"yes",im:"no",sim:"low",ana:"no",cb:"no",bud:"fits",mode:"NO_HISTORY",rw:false,
+   prev:[["user","What is the penalty for missing an EMI payment?"],["bot","A penal interest of 2% p.a. is charged on the overdue EMI amount for each month of delay."]],
+   curr:"I want to open a new fixed deposit account.",
+   note:"Clear topic switch from loan_inquiry to fd_inquiry. Low similarity, different intent, no references. Cleanest NO_HISTORY case — fresh context with zero payload.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"low",ana:"yes",cb:"no",bud:"fits",mode:"NO_HISTORY",rw:true,
+   prev:[["user","What is the process to close my savings account?"],["bot","Visit the nearest branch with your passbook, debit card, and a signed account closure form."]],
+   curr:"Can I do it online instead?",
+   note:"Clear topic switch but anaphoric 'it'. Raw history dropped — instead the rewriter makes the query fully self-contained so the LLM needs no history to answer correctly.",
+   rwB:"Can I do it online instead?",
+   rwA:"Can I close my savings account online through the mobile app or internet banking, instead of visiting a branch?"},
+
+  {ir:"yes",im:"no",sim:"low",ana:"no",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:false,
+   prev:[["user","What is the daily ATM cash withdrawal limit?"],["bot","Default ATM withdrawal limit is 25,000 per day. Premium account holders can request up to 1 lakh per day."]],
+   curr:"Going back to the ATM limit discussion — how do I request a higher limit?",
+   note:"Low similarity (completely new framing) but explicit callback phrase names the prior topic. Callback wins unconditionally — fetch the ATM limit Redis segment.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"low",ana:"yes",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:true,
+   prev:[["user","Explain the credit card upgrade process from Classic to Platinum."],["bot","Submit Form 17B along with your latest salary slip at any branch. Processing takes 7 working days."]],
+   curr:"Going back to that upgrade — will it change my credit limit?",
+   note:"All signals firing: low similarity, different intent, callback, anaphoric. Fetch the card upgrade segment and rewrite to make the credit limit question explicit.",
+   rwB:"Going back to that upgrade — will it change my credit limit?",
+   rwA:"Going back to the Classic to Platinum credit card upgrade — will upgrading my card change my existing credit limit, and if so, by how much?"},
+
+  {ir:"yes",im:"no",sim:"low",ana:"no",cb:"no",bud:"over",mode:"NO_HISTORY",rw:false,
+   prev:[["user","[15 turns about home loan processing — 3500 tokens]"],["bot","[Over budget — but mode is NO_HISTORY so nothing is sent anyway]"]],
+   curr:"What are the current forex exchange rates for USD?",
+   note:"Complete topic switch + over budget. NO_HISTORY regardless — the budget constraint is moot because there was nothing to send anyway.",
+   rwB:null,rwA:null},
+
+  {ir:"yes",im:"no",sim:"low",ana:"yes",cb:"no",bud:"over",mode:"NO_HISTORY",rw:true,
+   prev:[["user","[13 turns about credit card billing — 3100 tokens, over budget]"],["bot","[Credit card ending 4821, charge of 3200 on 15-Jan mentioned]"]],
+   curr:"Can I dispute that charge?",
+   note:"Clear topic switch, anaphoric 'that charge', over budget. No history sent but rewriter injects the card and charge details from the entity map — LLM gets full context cheaply.",
+   rwB:"Can I dispute that charge?",
+   rwA:"Can I raise a dispute for the unauthorized charge of 3,200 dated 15-Jan on credit card ending 4821?"},
+
+  {ir:"no",im:"na",sim:"na",ana:"yes",cb:"no",bud:"fits",mode:"FULL",rw:true,
+   prev:[["user","What is the processing fee for a home loan application?"],["bot","The processing fee is 0.5% of the loan amount subject to a minimum of 5,000 and maximum of 20,000."]],
+   curr:"Is it negotiable?",
+   note:"Router fires but confidence falls below threshold — intent unresolved. Anaphoric 'it' proves topic continuity. Inherit previous intent (loan_inquiry), send full history, rewrite query.",
+   rwB:"Is it negotiable?",
+   rwA:"Is the home loan processing fee of 0.5% (minimum 5,000) negotiable?"},
+
+  {ir:"no",im:"na",sim:"na",ana:"yes",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:true,
+   prev:[["user","What documents do I need for a home loan balance transfer?"],["bot","You need the existing loan statement, NOC from the current lender, and 3 months salary slips."]],
+   curr:"Going back to that doc list — does it count for this?",
+   note:"Router fails + callback + anaphoric simultaneously. Callback overrides the inherited intent path — fetch the balance transfer document segment directly and rewrite with full context.",
+   rwB:"Going back to that doc list — does it count for this?",
+   rwA:"Going back to the balance transfer document requirements — do those same documents (loan statement, NOC, salary slips) also satisfy the requirements for a fresh home loan application?"},
+
+  {ir:"no",im:"na",sim:"na",ana:"yes",cb:"no",bud:"over",mode:"FULL",rw:true,
+   prev:[["user","[12 turns about home loan eligibility — 2900 tokens, over budget]"],["bot","[Recent job change discussed as eligibility factor]"]],
+   curr:"Will that affect it?",
+   note:"Router fails, anaphoric references everywhere, over budget. Inherit previous intent, trim oldest turns, and rewrite both references ('that' and 'it') using session entity map.",
+   rwB:"Will that affect it?",
+   rwA:"Will the recent job change (from salaried to self-employed) affect my eligibility for the home loan I applied for?"},
+
+  {ir:"no",im:"na",sim:"na",ana:"no",cb:"yes",bud:"fits",mode:"TOPIC_SEGMENT",rw:false,
+   prev:[["user","Can you explain the premature withdrawal process for a fixed deposit?"],["bot","Premature FD withdrawal incurs a 1% penalty deducted from the applicable interest rate for the holding period."]],
+   curr:"Earlier you mentioned the FD withdrawal penalty — what if it is a tax-saver FD?",
+   note:"Router fails but callback phrase is clear and unambiguous. No anaphoric reference needs resolving. Fetch the FD withdrawal segment directly — enough signal without intent resolution.",
+   rwB:null,rwA:null},
+
+  {ir:"no",im:"na",sim:"na",ana:"no",cb:"no",bud:"fits",mode:"PARTIAL",rw:false,
+   prev:[["user","What are your bank branch working hours?"],["bot","All branches are open Monday to Saturday from 10 AM to 4 PM. Online banking and the mobile app are available 24/7."]],
+   curr:"mmk thx",
+   note:"Router fails completely, no anaphora, no callback. Completely ambiguous acknowledgment. PARTIAL (last 3 turns) is the safest hedge — gives LLM a grounding window without flooding it.",
+   rwB:null,rwA:null},
+
+  {ir:"no",im:"na",sim:"na",ana:"no",cb:"no",bud:"over",mode:"PARTIAL",rw:false,
+   prev:[["user","[16 turns of completely mixed topics — 3800 tokens, over budget]"],["bot","[Multiple intent switches, no coherent thread]"]],
+   curr:"ok",
+   note:"Router fails, no signals at all, over budget. Last 3 turns trimmed to budget. The universal fallback — always safe because it provides minimal grounding without risk of misleading context.",
+   rwB:null,rwA:null}
+];
+
+var modeBadge = {
+  "FULL":          '<span class="badge b-teal">FULL</span>',
+  "PARTIAL":       '<span class="badge b-amber">PARTIAL</span>',
+  "NO_HISTORY":    '<span class="badge b-coral">NO_HISTORY</span>',
+  "TOPIC_SEGMENT": '<span class="badge b-purple">TOPIC_SEGMENT</span>'
+};
+
+function simBadge(s) {
+  if (s === "high") return '<span class="badge b-teal">sim &gt;0.85</span>';
+  if (s === "med")  return '<span class="badge b-amber">sim 0.55–0.85</span>';
+  if (s === "low")  return '<span class="badge b-coral">sim &lt;0.55</span>';
+  return '';
+}
+
+function renderCards() {
+  var html = '';
+  for (var i = 0; i < data.length; i++) {
+    var r = data[i];
+    var prevHtml = '';
+    for (var j = 0; j < r.prev.length; j++) {
+      var cls = r.prev[j][0] === 'user' ? 'turn-user' : 'turn-bot';
+      var role = r.prev[j][0] === 'user' ? 'User' : 'Assistant';
+      prevHtml += '<div class="turn ' + cls + '"><div class="turn-role">' + role + '</div><div class="turn-text">' + r.prev[j][1] + '</div></div>';
+    }
+    var rwHtml = '';
+    if (r.rw) {
+      rwHtml = '<div class="rw-box"><div class="rw-title">&#9998; Query Rewrite</div>'
+             + '<div class="rw-label">Before</div><div class="rw-before">' + r.rwB + '</div>'
+             + '<div class="rw-label">After</div><div class="rw-after">' + r.rwA + '</div></div>';
+    }
+    var badges = '<span class="card-num">#' + (i+1) + '</span>'
+               + modeBadge[r.mode]
+               + '<span class="badge b-gray">' + (r.ir === 'yes' ? 'intent resolved' : 'intent unresolved') + '</span>'
+               + simBadge(r.sim)
+               + (r.ana === 'yes' ? '<span class="badge b-pink">anaphoric</span>' : '')
+               + (r.cb  === 'yes' ? '<span class="badge b-blue">callback</span>'  : '')
+               + (r.bud === 'over' ? '<span class="badge b-red">budget trimmed</span>' : '')
+               + (r.rw ? '<span class="badge b-amber">rewrite</span>' : '');
+    var searchText = (r.prev.map(function(x){ return x[1]; }).join(' ') + ' ' + r.curr + ' ' + r.note).toLowerCase();
+    html += '<div class="card"'
+          + ' data-ir="'  + r.ir  + '"'
+          + ' data-sim="' + r.sim + '"'
+          + ' data-ana="' + r.ana + '"'
+          + ' data-cb="'  + r.cb  + '"'
+          + ' data-bud="' + r.bud + '"'
+          + ' data-mode="'+ r.mode+ '"'
+          + ' data-text="'+ searchText + '">'
+          + '<div class="card-header">' + badges + '</div>'
+          + '<div class="card-body">'
+          + '<div class="card-note">' + r.note + '</div>'
+          + '<div class="section-label">Prior Context</div>'
+          + prevHtml
+          + '<div style="margin-top:10px"><div class="section-label">Current Query</div>'
+          + '<div class="turn turn-user"><div class="turn-role">User</div><div class="turn-text">' + r.curr + '</div></div></div>'
+          + rwHtml
+          + '</div></div>';
+  }
+  document.getElementById('cards').innerHTML = html;
+}
+
+function applyFilters() {
+  var fi   = document.getElementById('f-ir').value;
+  var fs   = document.getElementById('f-sim').value;
+  var fa   = document.getElementById('f-ana').value;
+  var fc   = document.getElementById('f-cb').value;
+  var fb   = document.getElementById('f-bud').value;
+  var fm   = document.getElementById('f-mode').value;
+  var fq   = document.getElementById('f-search').value.toLowerCase().trim();
+  var cards = document.querySelectorAll('.card');
+  var v = 0;
+  for (var i = 0; i < cards.length; i++) {
+    var c = cards[i];
+    var show = (!fi || c.getAttribute('data-ir')   === fi)
+            && (!fs || c.getAttribute('data-sim')  === fs)
+            && (!fa || c.getAttribute('data-ana')  === fa)
+            && (!fc || c.getAttribute('data-cb')   === fc)
+            && (!fb || c.getAttribute('data-bud')  === fb)
+            && (!fm || c.getAttribute('data-mode') === fm)
+            && (!fq || c.getAttribute('data-text').indexOf(fq) !== -1);
+    if (show) { c.classList.remove('hidden'); v++; }
+    else c.classList.add('hidden');
+  }
+  document.getElementById('counter').textContent = 'Showing ' + v + ' of ' + data.length;
+  document.getElementById('empty').style.display = v === 0 ? 'block' : 'none';
+}
+
+function resetFilters() {
+  var ids = ['f-ir','f-sim','f-ana','f-cb','f-bud','f-mode'];
+  for (var i = 0; i < ids.length; i++) document.getElementById(ids[i]).value = '';
+  document.getElementById('f-search').value = '';
+  applyFilters();
+}
+
+renderCards();
+
+document.getElementById('f-ir').addEventListener('change', applyFilters);
+document.getElementById('f-sim').addEventListener('change', applyFilters);
+document.getElementById('f-ana').addEventListener('change', applyFilters);
+document.getElementById('f-cb').addEventListener('change', applyFilters);
+document.getElementById('f-bud').addEventListener('change', applyFilters);
+document.getElementById('f-mode').addEventListener('change', applyFilters);
+document.getElementById('f-search').addEventListener('input', applyFilters);
+document.getElementById('reset-btn').addEventListener('click', resetFilters);
+</script>
+</body>
+</html>
